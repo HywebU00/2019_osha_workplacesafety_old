@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="no-js">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>勞動部職業安全衛生署 職安衛卓越網/職災公開網</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="assets/module/bootstrap-3.3.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/module/bootstrap-3.3.2/css/bootstrap-theme.min.css">
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+    <!-- mega menu-->
+    <link rel="stylesheet" href="assets/css/megamenu.css">
+    <!-- slick 輪播-->
+    <link rel="stylesheet" href="assets/module/slick/slick.css">
+    <link rel="stylesheet" href="assets/module/slick/slick-theme.css">
+    <!-- fullcalendar 自適應行事曆 -->
+    <link rel="stylesheet" href="assets/module/fullcalendar-2.3.1/fullcalendar.css">
+    <link rel="stylesheet" href="assets/module/fullcalendar-2.3.1/fullcalendar.print.css" media='print'>
+    <!--fontello icon font -->
+    <link rel="stylesheet" href="assets/module/fontello/css/fontello.css">
+    <!-- 自訂CSS -->
+    <link rel="stylesheet" href="assets/css/bootstrap.offcanvas.css">
+    <link rel="stylesheet" href="css/customize.css">
+    <!--呼叫TGOS MAP API (lite)-->
+    <script type="text/javascript" src="http://api.tgos.tw/TGOS_API/tgos?ver=2&AppID=x+JLVSx85Lk=&APIKey=in8W74q0ogpcfW/STwicK8D5QwCdddJf05/7nb+OtDh8R99YN3T0LurV4xato3TpL/fOfylvJ9Wv/khZEsXEWxsBmg+GEj4AuokiNXCh14Rei21U5GtJpIkO++Mq3AguFK/ISDEWn4hMzqgrkxNe1Q==" charset="utf-8"></script>
+    <script type="text/javascript">
+    var pMap; //初始化地圖物件
+    var mapDiv, newCustomLayer;
+    var marker;
+    var locator = new TGOS.TGLocateService();
+    var markerArr = [];
+    //------------------------------若網頁介面依照範例網頁的預設設定,以下程式碼可不修改---------------------------------------
+    function InitWnd() {
+        //------------------初始化地圖--------------------
+        var pOMap = document.getElementById("OMap");
+        var mapOptiions = {
+            scaleControl: false, //不顯示比例尺
+            navigationControl: false, //顯示地圖縮放控制項
+            navigationControlOptions: { //設定地圖縮放控制項
+                controlPosition: TGOS.TGControlPosition.TOP_LEFT, //控制項位置
+                navigationControlStyle: TGOS.TGNavigationControlStyle.SMALL //控制項樣式
+            },
+            mapTypeControl: false //不顯示地圖類型控制項
+        };
+        pMap = new TGOS.TGOnlineMap(pOMap, TGOS.TGCoordSys.EPSG3826, mapOptiions); //建立地圖,選擇TWD97坐標
+        pMap.setZoom(3); //初始地圖縮放層級
+        pMap.setCenter(new TGOS.TGPoint(211000, 2570000)); //初始地圖中心點
+        marker = new TGOS.TGMarker(pMap, new TGOS.TGPoint(0, 0));
+        marker.setVisible(false);
+        console.info(pMap.getBounds());
+    }
+
+    function SetCenter(x, y) {
+        this.pMap.setCenter(new TGOS.TGPoint(x, y)); //初始地圖中心點
+        setZoom(10);
+        getViewPortCase(pMap.getBounds());
+    }
+
+    function getZoom() {
+        return this.pMap.getZoom();
+    }
+
+    function setZoom(zoom) {
+        this.pMap.setZoom(zoom);
+    }
+
+    function getCenter() {}
+
+    function getViewPortCase(viewport) {
+        $.ajax({
+            type: 'POST',
+            async: true,
+            url: '/umbraco/Surface/MapCaseSearch/GetCaseByViewPort',
+            data: {
+                target: $('.resourceDDL option:selected').val(),
+                left: viewport.left,
+                right: viewport.right,
+                top: viewport.top,
+                bottom: viewport.bottom
+            },
+            success: function(data) {
+                if (data) {
+                    if (data.length === 0) {
+                        alert('查無資料');
+                    } else {
+                        data.forEach(function(e) {
+                            setPoint(e.Id, e.X, e.Y, e.Name, e.Name, '/Content/images/'.concat(e.CaseIcon));
+                        });
+                    }
+                }
+            },
+            error: function(jqXHR, exception) {
+                alert('查無資料');
+            }
+        })
+    }
+
+    function setPoint(id, x, y, name, message, imageSrc) {
+        var _point = new TGOS.TGPoint(x, y);
+        var markerImg = new TGOS.TGImage(imageSrc, new TGOS.TGSize(20, 20), new TGOS.TGPoint(0, 0), new TGOS.TGPoint(0, 0)); //設定標記點圖片及尺寸大小
+        var pTGMarker = new TGOS.TGMarker(pMap, _point, name, markerImg); //建立機關單位標記點
+        markerArr.push(pTGMarker);
+        var InfoWindowOptions = {
+            maxWidth: 4000, //訊息視窗的最大寬度
+            pixelOffset: new TGOS.TGSize(5, -5), //InfoWindow起始位置的偏移量, 使用TGSize設定, 向右X為正, 向上Y為負
+            zIndex: 99 //視窗堆疊順序
+        };
+        var _messageBox = new TGOS.TGInfoWindow(message, _point, InfoWindowOptions);
+        TGOS.TGEvent.addListener(pTGMarker, "mouseover", function() {
+            _messageBox.open(pMap);
+        }); //滑鼠監聽事件
+        TGOS.TGEvent.addListener(pTGMarker, "mouseout", function() {
+            _messageBox.close();
+        });
+        TGOS.TGEvent.addListener(pTGMarker, "mousedown", function() {
+            $.ajax({
+                type: 'POST',
+                url: '/umbraco/Surface/MapCaseSearch/QueryMoreDetailById',
+                async: true,
+                data: { id: id },
+                success: function(data) {
+                    $('.lb1').html(data);
+                    $('.lbt1').click();
+                }
+            });
+        });
+    }
+    var fill = null;
+
+    function locateDistrict(keyword) { //加入行政區定位
+        if (fill) {
+            fill.setMap(null)
+        };
+        locator.locateTWD97({
+            district: keyword
+        }, function(e, status) {
+            if (status != TGOS.TGLocatorStatus.OK) {
+                alert('查無行政區');
+                return;
+            }
+            marker.setVisible(false); //設定標記點標示行政區中心
+            marker.setPosition(e[0].geometry.location);
+            pMap.fitBounds(e[0].geometry.viewport);
+            pMap.setZoom(pMap.getZoom() - 1);
+            //調整畫面符合行政區邊界
+            var pgn = e[0].geometry.geometry;
+            //讀取行政區空間資訊
+            fill = new TGOS.TGFill(pMap, pgn, {
+                //將行政區空間資訊以面圖徵呈現
+                fillColor: '#00AAAA',
+                fillOpacity: 0.2,
+                strokeColor: '#009090',
+                strokeWeight: 5,
+                strokeOpacity: 1
+            });
+            fill.setZIndex(-10);
+        });
+    }
+    window.chartColors = {
+        red: 'rgb(255, 99, 132)',
+        orange: 'rgb(255, 159, 64)',
+        yellow: 'rgb(255, 205, 86)',
+        green: 'rgb(75, 192, 192)',
+        blue: 'rgb(54, 162, 235)',
+        purple: 'rgb(153, 102, 255)',
+        grey: 'rgb(231,233,237)'
+    };
+    var ev = [];
+
+    function getLightBoxHtml(title, data) {
+        var lightboxDiv = document.createElement("div");
+        lightboxDiv.id = title;
+        lightboxDiv.style.display = 'none';
+        var _color = ['紅色', '黃色', '綠色', '藍色', '色'];
+        var html = ''.concat('<div class="overlay"></div>', '<div class="boxcontent">', '<div class="boxclose"><a href="#"><img src="/Content/images/icon_close.png" alt="關閉"></a></div>', '<h2>', title, '</h2>', '<h3 class="hidden"></h3>', '<div class="boxdata">', '<table>');
+        data.forEach(function(v, i) {
+            html = html.concat('<tr>', '<td><div class="colorblock block_no0', (i + 1), '" title="', _color[i], '"></div></td>', '<td width="55%">', v.IconText, '</td>', '<td>', v.IconValue, '</td>', '</tr>');
+        });
+        html = html.concat('</table></div></div>');
+        lightboxDiv.innerHTML = html;
+        return lightboxDiv;
+    }
+
+    function getTabHtml(title, data) {
+        var lightboxDiv = document.createElement("div");
+        lightboxDiv.id = title.concat('_tab');
+        lightboxDiv.style.display = 'none';
+        var html = ''.concat('<h3>', title, '</h3><table>');
+        data.forEach(function(v, i) {
+            html = html.concat('<tr>', '<td width="10%"><div class="colorblock block_no0', (i + 1), '"></div></td>', '<td>', v.IconText, '</td></tr>');
+        });
+        html = html.concat('</table></div></div>');
+        lightboxDiv.innerHTML = html;
+        return lightboxDiv;
+    }
+    //客制化圖層
+    var CustomLayer = function(map) {
+        this.padding = 50;
+        this.width = 180;
+        this.height = 100;
+        this.setMap(map);
+    }
+    //繼承TGOS.TGOverlayView
+    CustomLayer.prototype = new TGOS.TGOverlayView();
+    //實做onAdd，設定疊加層
+    CustomLayer.prototype.onAdd = function() {
+        //取得欲套疊的地圖承載層
+        var panes = this.getPanes();
+        var mapLayer = panes.overlayviewLayer;
+        //設定疊加層座標系統
+        this.mSRS = this.map.getCoordSys();
+        //設定疊加層HTML 物件(DIV)
+        this.div = document.createElement("div");
+        this.div.id = "chartDiv";
+        this.div.style.position = "absolute";
+        //設定定疊加層寬度
+        this.div.style.width = "100%";
+        //設定定疊加層高度
+        this.div.style.height = "100%";
+        //設定定疊加層HTML物件 Style
+        this.div.style.zIndex = 1000;
+        //將div加入至現有圖層中
+        mapLayer.appendChild(this.div);
+        for (var i = 0; i < ev.length; i++) {
+            var tDiv = document.createElement("div");
+            var tCanvas = document.createElement("canvas");
+            //設定疊加層HTML 物件(DIV) 放置chart用
+            var lightboxDiv = getLightBoxHtml(ev[i].LightBoxTitle, ev[i].DataSets);
+            //var tabDiv = getTabHtml(ev[i].LightBoxTitle, ev[i].DataSets);
+            tDiv.id = "chartArea_" + ev[i].Label;
+            tDiv.className = ev[i].LightBoxTitle;
+            tDiv.style.width = this.width + "px";
+            tDiv.style.height = this.height + "px";
+            tDiv.style.position = "absolute";
+            tDiv.onclick = function(e) {
+                $('.lb1').html($("#" + e.currentTarget.className).html());
+                $('.statistical_dec').html($("#" + e.currentTarget.className + '_tab').html());
+                $('.lbt1').click();
+            }
+            tDiv.appendChild(tCanvas);
+            tDiv.appendChild(lightboxDiv);
+            //tDiv.appendChild(tabDiv);
+            //new Chart
+            var config = newConfig(ev[i].DataSets);
+            var ctx = tCanvas.getContext("2d");
+            ctx.canvas.width = this.width;
+            ctx.canvas.height = this.height;
+            window.myPie = new Chart(ctx, config);
+            //取得螢幕點位
+            var proj = this.getProjection();
+            var p = proj.fromMapToDiv(new TGOS.TGPoint(ev[i].X, ev[i].Y));
+            //給螢幕位置
+            tDiv.style.left = (p.x - this.padding) + "px";
+            tDiv.style.top = (p.y - this.padding) + "px";
+            //add chartDiv layer
+            this.div.appendChild(tDiv);
+        }
+    }
+    CustomLayer.prototype.onDraw = function() {
+        //Write By Supergeo
+        var proj = this.getProjection();
+        var padding = this.padding;
+        // transform function. 指定每個點的座標.
+        for (var i = 0; i < ev.length; i++) {
+            transform(ev[i].Label, new TGOS.TGPoint(ev[i].X, ev[i].Y));
+        }
+
+        function transform(id, d) {
+            //將地圖座標轉換成相對於地圖div左上角的螢幕座標
+            var pt = new TGOS.TGPoint(d.x, d.y);
+            var p = proj.fromMapToDiv(pt);
+            document.getElementById("chartArea_" + id).style.left = (p.x - padding) + "px";
+            document.getElementById("chartArea_" + id).style.top = (p.y - padding) + "px";
+        }
+    }
+    //實做onRemove
+    CustomLayer.prototype.onRemove = function() {
+        this.div.parentNode.removeChild(this.div);
+        this.div = null;
+    }
+    //圓餅圖參數
+    function newConfig(cityData) {
+        var _data = [];
+        var _label = [];
+        var _color = [
+            window.chartColors.red,
+            window.chartColors.orange,
+            window.chartColors.yellow,
+            window.chartColors.green,
+            window.chartColors.blue,
+        ];
+        for (var i = 0; i < cityData.length; i++) {
+            _data.push(cityData[i].Value);
+            _label.push(cityData[i].Text);
+        }
+        var finalColor = _color.slice(0, _data.length);
+        var config = {
+            type: 'pie',
+            data: {
+                datasets: [{
+                    data: _data,
+                    backgroundColor: _color.slice(0, _data.length)
+                }],
+                labels: _label
+            },
+            options: {
+                responsive: false,
+                legend: {
+                    display: false,
+                    position: 'top'
+                },
+                title: {
+                    display: false,
+                    text: '圓餅圖'
+                }
+            }
+        };
+        return config;
+    }
+
+    function locatAddress(address) {
+        clearMarker();
+        locator.locateTWD97({ //指定回傳結果為TWD97坐標系統
+            address: address //要求地址定位
+        }, function(e, status) {
+            if (status != TGOS.TGLocatorStatus.OK) {
+                alert('查無地址');
+                return;
+            }
+            marker.setVisible(true);
+            marker.setPosition(e[0].geometry.location); //將定位結果以標記顯示
+            pMap.fitBounds(e[0].geometry.viewport); //將地圖畫面移至符合查詢之位置
+            getViewPortCase(e[0].geometry.viewport);
+        });
+    }
+
+    function initPoint() {
+        $.ajax({
+            type: 'POST',
+            url: '/umbraco/Surface/MapCaseSearch/QueryTopTenPoint',
+            async: false,
+            data: { id: 17238 },
+            success: function(data) {
+                clearMarker();
+                $(".tenPointAlert").show();
+                data.forEach(function(e) {
+                    setPoint(e.Id, e.X, e.Y, e.Name, e.Name, '/Content/images/'.concat(e.CaseIcon));
+                });
+            }
+        });
+    }
+
+    function initChartData(chartData) {
+        if (newCustomLayer) {
+            newCustomLayer.onRemove();
+        }
+        $('.lb1').html('');
+        $('.statistical_dec').html('');
+        this.ev = chartData;
+        newCustomLayer = new CustomLayer(pMap);
+    }
+
+    function clearMarker() {
+        $(".tenPointAlert").hide();
+        if (markerArr) {
+            for (var i = 0; i < markerArr.length; i++) {
+                markerArr[i].setVisible(false);
+            }
+        }
+        if (fill) {
+            fill.setMap(null);
+        }
+    }
+    </script>
+</head>
+
+<body onload="InitWnd();">
+    <!-- map台灣地圖 start-->
+    <div class="map">
+        <div id="OMap"></div>
+    </div>
+    <!-- map台灣地圖 end -->
+    <!-- 放大縮小按鈕 start-->
+    <div class="mapbtn">
+        <ul>
+            <li><a href="#"><img src="images/map_btn01.png" alt="放大"></a></li>
+            <li><a href="#"><img src="images/map_btn03.png" alt="全台"></a></li>
+            <li><a href="#"><img src="images/map_btn02.png" alt="縮小"></a></li>
+        </ul>
+    </div>
+    <!-- 放大縮小按鈕 end-->
+    <h1 class="Logo"><a href="#"><img src="images/logo.png" alt="勞動部職業安全衛生署 職安衛卓越網/重大職災公開網"></a></h1>
+    <!-- 案件查詢 圖標說明 start-->
+    <!-- 若要關掉可加hidden即可 -->
+    <div class="explainlabel hidden">
+        <ul>
+            <li><img src="images/icon_description01.png">重大職業災害案件</li>
+            <li><img src="images/icon_description02.png">職業安全衛生自主管理良好案件</li>
+        </ul>
+    </div>
+    <!-- 統計查詢 圖標顏色說明 -->
+    <div class="iconcolorexplain">
+        <h2>圖標顏色說明</h2>
+        <div class="iconcolorblock">
+            <h3>職災類型</h3>
+            <ul>
+                <li><span class="color_no01"></span>墜落、滾落</li>
+                <li><span class="color_no02"></span>跌倒</li>
+                <li><span class="color_no03"></span>衝撞</li>
+                <li><span class="color_no04"></span>物體飛落</li>
+                <li><span class="color_no05"></span>物體倒塌、崩塌</li>
+                <li><span class="color_no06"></span>被撞</li>
+                <li><span class="color_no07"></span>被夾、被捲</li>
+                <li><span class="color_no08"></span>被刺、割、擦傷</li>
+                <li><span class="color_no09"></span>踩踏(踏穿)</li>
+                <li><span class="color_no10"></span>溺斃</li>
+                <li><span class="color_no11"></span>與高溫、低溫之接觸</li>
+                <li><span class="color_no12"></span>與有害物等之接觸</li>
+                <li><span class="color_no13"></span>感電</li>
+                <li><span class="color_no14"></span>爆炸</li>
+                <li><span class="color_no15"></span>物體破裂</li>
+                <li><span class="color_no16"></span>火災</li>
+                <li><span class="color_no17"></span>不當動作</li>
+                <li><span class="color_no18"></span>其他</li>
+                <li><span class="color_no19"></span>不能歸類</li>
+                <li><span class="color_no20"></span>公路交通事故</li>
+                <li><span class="color_no21"></span>鐵路交通事故</li>
+                <li><span class="color_no22"></span>船舶飛機交通事故</li>
+                <li><span class="color_no23"></span>其他交通事故</li>
+            </ul>
+            <h3>行業別</h3>
+            <ul>
+                <li><span class="color2_no01"></span>農、林、漁、牧業</li>
+                <li><span class="color2_no02"></span>礦業及土石採取業</li>
+                <li><span class="color2_no03"></span>製造業</li>
+                <li><span class="color2_no04"></span>電力及燃氣供應業</li>
+                <li><span class="color2_no05"></span>用水供應及污染整治業</li>
+                <li><span class="color2_no06"></span>營建工程業</li>
+                <li><span class="color2_no07"></span>批發及零售業</li>
+                <li><span class="color2_no08"></span>運輸及倉儲業</li>
+                <li><span class="color2_no09"></span>住宿及餐飲業</li>
+                <li><span class="color2_no10"></span>出版、影音製作、傳播及資通訊服務業</li>
+                <li><span class="color2_no11"></span>金融及保險業</li>
+                <li><span class="color2_no12"></span>不動產業</li>
+                <li><span class="color2_no13"></span>專業、科學及技術服務業</li>
+                <li><span class="color2_no14"></span>支援服務業</li>
+                <li><span class="color2_no15"></span>公共行政及國防</li>
+                <li><span class="color2_no16"></span>強制性社會安全</li>
+                <li><span class="color2_no17"></span>教育業</li>
+                <li><span class="color2_no18"></span>醫療保健及社會工作服務業</li>
+                <li><span class="color2_no19"></span>藝術、娛樂及休閒服務業</li>
+                <li><span class="color2_no20"></span>其他服務業</li>
+            </ul>
+        </div>
+    </div>
+    <!-- 圖標說明 end-->
+    <!-- 收合區塊 start -->
+    <div class="searchblock">
+        <div class="btn_close"><a href="#"><img src="images/btn_close.png" alt="關"></a></div>
+        <div class="btn_open"><a href="#">點<br> 開<br> 查<br> 詢
+                <!-- <img src="images/btn_open.png" alt="開"> --></a></div>
+        <div class="searchdata">
+            <!-- 標頭圖 start -->
+            <div class="searchtitlepic">
+                <div class="display_method">
+                    <ul>
+                        <li><a href="#" class="mapdisplay">地圖顯示</a></li>
+                        <li><a href="#" class="datadisplay">資料顯示</a></li>
+                    </ul>
+                </div>
+            </div>
+            <!-- 標頭圖 end -->
+            <form>
+                <!-- tab start -->
+                <div class="tabSet">
+                    <!--第一個頁籤組-->
+                    <section class="tabs">
+                        <span class="tabItem active"><a href="#">案件查詢</a></span>
+                        <!--選到的頁籤項目-->
+                        <div class="tabContent">
+                            <div class="remarks">【本頁顯示最新10筆具地址資料之職災與最近上傳十筆優良案件】</div>
+                            <!-- 案件查詢start -->
+                            <div class="formTb">
+                                <table>
+                                    <tr>
+                                        <th class="blueword"><label for="">
+                                                <input type="radio" name="optionsRadios" value="" placeholder="" id=""> 查&nbsp;行&nbsp;政&nbsp;區 </label>
+                                        </th>
+                                        <td>
+                                            <div class="row">
+                                                <div class="col-md-6 col-sm-6 col-xs-6">
+                                                    <select>
+                                                        <option>基隆市</option>
+                                                        <option selected="">台北市</option>
+                                                        <option>新北市</option>
+                                                        <option>台北市</option>
+                                                        <option>桃園市</option>
+                                                        <option>新竹市</option>
+                                                        <option>新竹縣</option>
+                                                        <option>苗栗縣</option>
+                                                        <option>台中市</option>
+                                                        <option>南投縣</option>
+                                                        <option>彰化縣</option>
+                                                        <option>雲林縣</option>
+                                                        <option>嘉義市</option>
+                                                        <option>嘉義縣</option>
+                                                        <option>台南市</option>
+                                                        <option>高雄市</option>
+                                                        <option>屏東縣</option>
+                                                        <option>宜蘭縣</option>
+                                                        <option>花蓮縣</option>
+                                                        <option>台東縣</option>
+                                                        <option>澎湖縣</option>
+                                                        <option>金門縣</option>
+                                                        <option>連江縣</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6 col-sm-6 col-xs-6">
+                                                    <select>
+                                                        <option selected>鄉鎮市區</option>
+                                                        <option>中正區</option>
+                                                        <option>信義區</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <a href="https://tw.yahoo.com/" class="explainbtn"><img src="images/icon_explain.png" alt="說明"></a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="blueword"><label for="">查事業單位</label>
+                                        </th>
+                                        <td><input type="text" name="" value="請輸入事業單位名稱" placeholder="請輸入事業單位名稱" id=""><a href="#" class="explainbtn"><img src="images/icon_explain2.png" alt="說明"></a></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="blueword"><label for="">
+                                                <input type="radio" name="optionsRadios" value="" placeholder="" id=""> 查&nbsp;&nbsp;&nbsp;&nbsp;地&nbsp;&nbsp;&nbsp;址 </label>
+                                        </th>
+                                        <td><input type="text" name="" value="請輸入地址" placeholder="請輸入地址" id=""></td>
+                                    </tr>
+                                    <tr class="linecolor">
+                                        <th><label for="">資&nbsp;料&nbsp;來&nbsp;源</label>
+                                        </th>
+                                        <td><select id="">
+                                                <option>重大職業災害案件</option>
+                                                <option>職業安全衛生自主管理良好案件</option>
+                                                <option>全部</option>
+                                            </select></td>
+                                    </tr>
+                                    <tr>
+                                        <th><label for="">附&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;表</label>
+                                        </th>
+                                        <td><select id="">
+                                                <option>請選擇</option>
+                                                <option>全部</option>
+                                            </select></td>
+                                    </tr>
+                                    <tr>
+                                        <th>發&nbsp;生&nbsp;日&nbsp;期</th>
+                                        <td>
+                                            <div class="row">
+                                                <div class="col-md-6 col-sm-6 col-xs-6">
+                                                    <label for="" class="until">從</label>
+                                                    <div class="date">
+                                                        <input type="text" name="" value="" placeholder="" id="">
+                                                        <a href="#"><img src="images/calendar_icon01.png" alt="日曆"></a></div>
+                                                </div>
+                                                <div class="col-md-6 col-sm-6 col-xs-6">
+                                                    <label for="" class="to">到</label>
+                                                    <div class="date">
+                                                        <input type="text" name="" value="" placeholder="" id>
+                                                        <a href="#"><img src="images/calendar_icon01.png" alt="日曆"></a></div>
+                                                </div>
+                                            </div>
+                                            <a href="#" class="explainbtn"><img src="images/icon_explain.png" alt="說明"></a>
+                                        </td>
+                                    </tr>
+                                    <tr class="linecolor">
+                                        <th> <label for="">職&nbsp;災&nbsp;類&nbsp;型</label>
+                                        </th>
+                                        <td><select id="">
+                                                <option>請選擇</option>
+                                                <option>墜落、滾落</option>
+                                                <option>跌倒</option>
+                                                <option>衝撞</option>
+                                                <option>物體飛落</option>
+                                                <option>物體倒塌、崩塌</option>
+                                            </select><a href="#" class="explainbtn"><img src="images/icon_explain.png" alt="說明"></a></td>
+                                    </tr>
+                                    <tr>
+                                        <th> <label for="">行&nbsp;&nbsp;&nbsp;&nbsp;業&nbsp;&nbsp;&nbsp;別</label>
+                                        </th>
+                                        <td><select id="">
+                                                <option>請選擇</option>
+                                                <option>農、林、漁、牧業</option>
+                                                <option>礦業及土石採取業</option>
+                                                <option>製造業</option>
+                                                <option>電力及燃氣供應業</option>
+                                                <option>用水供應及污染整治業</option>
+                                            </select><a href="#" class="explainbtn"><img src="images/icon_explain.png" alt="說明"></a></td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <!-- 案件查詢end -->
+                            <!-- 按鈕start -->
+                            <div class="formBtn">
+                                <button type="submit">查詢</button>
+                            </div>
+                            <!-- 按鈕end -->
+                            <div class="lightboxlink"><a href="javascript:;" class="lightBoxBtn" data-rel="#box1">燈箱按鈕</a></div>
+                            <div class="footer">
+                                <p>最佳瀏覽設定：1024*768&nbsp;&nbsp;</p>
+                                <p><a href="#" class="lightBoxBtn" data-rel="#box2">網頁說明、免責聲明與要點規定</a></p>
+                                <p><a href="#" class="lightBoxBtn" data-rel="#box2">重大職業災害公開網API</a></p>
+                                <p><a href="#" class="lightBoxBtn" data-rel="#box2">Open Data 重大職災公開網資料</a></p>
+                                <p>瀏覽人次：61,025</p>
+                            </div>
+                        </div>
+                        <span class="tabItem"><a href="#">統計查詢</a></span>
+                        <!--非選到的頁籤項目-->
+                        <div class="tabContent">
+                            <div class="remarks">【統計分析結果包括公布地址及不公布地址之案件】</div>
+                            <!-- 案件查詢start -->
+                            <div class="formTb">
+                                <table>
+                                    <tr>
+                                        <th> <label for="">資&nbsp;料&nbsp;來&nbsp;源</label>
+                                        </th>
+                                        <td><select id="">
+                                                <option>重大職業災害案件</option>
+                                                <option>職業安全衛生自主管理良好案件</option>
+                                            </select></td>
+                                    </tr>
+                                    <tr>
+                                        <th> <label for="">資&nbsp;料&nbsp;類&nbsp;別</label>
+                                        </th>
+                                        <td><select id="">
+                                                <option>請選擇</option>
+                                                <option>職災類型</option>
+                                            </select></td>
+                                    </tr>
+                                    <tr>
+                                        <th><label for="">附&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;表</label>
+                                        </th>
+                                        <td><select id="">
+                                                <option>請選擇</option>
+                                                <option>全部</option>
+                                            </select></td>
+                                    </tr>
+                                    <tr>
+                                        <th> <label for="">縣&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;市</label>
+                                        </th>
+                                        <td><span class="note">最多可勾選5個縣市</span>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 基隆市</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 台北市</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 新北市</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 桃園市</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 新竹市</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 新竹縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 苗栗縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 台中市</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 南投縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 彰化縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 雲林縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 嘉義市</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 嘉義縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 台南市</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 高雄市</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 屏東縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 宜蘭縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 花蓮縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 台東縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 澎湖縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 金門縣</label>
+                                            <label class="county">
+                                                <input type="checkbox" name="" value="" id=""> 連江縣</label></td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <!-- 案件查詢end -->
+                            <!-- 按鈕start -->
+                            <div class="formBtn">
+                                <button type="submit">查詢</button>
+                            </div>
+                            <!-- 按鈕end -->
+                            <div class="lightboxlink"><a href="javascript:;" class="lightBoxBtn" data-rel="#box3">燈箱按鈕</a></div>
+                            <div class="footer">
+                                <p>最佳瀏覽設定：1024*768&nbsp;&nbsp;</p>
+                                <p><a href="#" class="lightBoxBtn" data-rel="#box2">網頁說明、免責聲明與要點規定</a></p>
+                                <p><a href="#" class="lightBoxBtn" data-rel="#box2">重大職業災害公開網API</a></p>
+                                <p><a href="#" class="lightBoxBtn" data-rel="#box2">Open Data 重大職災公開網資料</a></p>
+                                <p>瀏覽人次：61,025</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                <!-- tab end -->
+            </form>
+        </div>
+    </div>
+    <!-- 收合區塊 end -->
+    <!-- 燈箱start -->
+    <!-- 查詢結果燈箱 start-->
+    <div class="lightbox " id="box1">
+        <div class="overlay"></div>
+        <div class="boxcontent">
+            <div class="boxclose"><a href="#"><img src="images/icon_close.png" alt="關閉"></a></div>
+            <h2>與高溫、低溫之接觸與高溫、低溫之接觸與高溫、低溫之接觸與高溫、低溫之接觸與高溫</h2>
+            <div class="boxdata">
+                <!-- 1 -->
+                <table>
+                    <tr>
+                        <th>事業單位</th>
+                        <td>宏林營造廠股份有限公司</td>
+                    </tr>
+                    <tr>
+                        <th>行業別</th>
+                        <td>營造業<sup>紅色字上標</sup></td>
+                    </tr>
+                    <tr>
+                        <th>災害類型</th>
+                        <td>墜落、滾落</td>
+                    </tr>
+                    <tr>
+                        <th>罹災人數</th>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <th>業主</th>
+                        <td>長虹建設股份有限公司</td>
+                    </tr>
+                    <tr>
+                        <th>工程名稱</th>
+                        <td>（103建141）長虹天蔚集合住宅新建工程長虹天蔚集合住宅新建工程長虹天蔚集合住宅新建工程</td>
+                    </tr>
+                    <tr>
+                        <th>場所(肇災處)</th>
+                        <td>於地下1樓電梯口旁合梯上墜落</td>
+                    </tr>
+                    <tr>
+                        <th>地址</th>
+                        <td>臺北市北投區三合街1段118巷2號</td>
+                    </tr>
+                    <tr>
+                        <th>勞動檢查機構</th>
+                        <td>臺北市勞動檢查處</td>
+                    </tr>
+                    <tr>
+                        <th>發生日期</th>
+                        <td>106/12/03</td>
+                    </tr>
+                </table>
+                <!-- 2 -->
+                <!-- <table>
+                    <tr>
+                        <th>事業單位</th>
+                        <td>宏林營造廠股份有限公司</td>
+                    </tr>
+                    <tr>
+                        <th>行業別</th>
+                        <td>營造業</td>
+                    </tr>
+                    <tr>
+                        <th>災害類型</th>
+                        <td>墜落、滾落</td>
+                    </tr>
+                    <tr>
+                        <th>罹災人數</th>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <th>業主</th>
+                        <td>長虹建設股份有限公司</td>
+                    </tr>
+                    <tr>
+                        <th>工程名稱</th>
+                        <td>（103建141）長虹天蔚集合住宅新建工程</td>
+                    </tr>
+                    <tr>
+                        <th>場所(肇災處)</th>
+                        <td>於地下1樓電梯口旁合梯上墜落</td>
+                    </tr>
+                    <tr>
+                        <th>地址</th>
+                        <td>臺北市北投區三合街1段118巷2號</td>
+                    </tr>
+                    <tr>
+                        <th>勞動檢查機構</th>
+                        <td>臺北市勞動檢查處</td>
+                    </tr>
+                    <tr>
+                        <th>發生日期</th>
+                        <td>106/12/03</td>
+                    </tr>
+                </table> -->
+                <!-- 3 -->
+            </div>
+        </div>
+    </div>
+    <!-- 查詢結果燈箱 end-->
+    <!-- 資料庫及免責說明燈箱 start-->
+    <div class="lightbox" id="box2">
+        <div class="overlay"></div>
+        <div class="boxcontent">
+            <div class="boxclose"><a href="#"><img src="images/icon_close.png" alt="關閉"></a></div>
+            <h2>資料庫及免責說明-內容</h2>
+            <div class="boxdata">
+                <p>職安衛卓越網/職災公開網 網頁說明：<br> 一、本部依政府資訊公開法第六條、「勞動部公布職業安全衛生優良案件作業要點」及「勞動部公布重大職業災害案件作業要點」規定，建置公開資料庫及網頁，並由本部及勞動檢查機構上傳資料庫內容供民眾查詢。<br> 二、 依「勞動部公布職業安全衛生優良案件作業要點」及「勞動部公布重大職業災害案件作業要點」規定，本部及勞動檢查機構得隨時更新、維護及移除相關內容。<br> 三、 本部為確保資料庫及網頁正常運作，如修改設定及內容，造成使用者之損失，不負賠償之責任。<br> 四、個案如有相關疑問請洽各轄區勞動檢查機構：<a href="https://www.osha.gov.tw/1106/1164/1165/1169/4314/">https://www.osha.gov.tw/1106/1164/1165/1169/4314/</a><br> 五、民眾疑義請洽：<a href="#">search-service@hyweb.com.tw　04-2706-3968 #4803</a></p>
+                <p> 免責聲明：<br> 一、本資料庫及網頁為本部及勞動檢查機構執行業務之政府資訊資料之公開，使用者不得作為其他業務之佐證。<br> 二、使用者如利用本資料庫及網頁，因故意或過失致第三人受有損害，應由使用者負其損害賠償責任，本部及勞動檢查機構概不負責；若造成本部及勞動檢查機構損害，使用者亦應負損害賠償責任。<br> 三、因線路或設備故障、檢修、保養、停用，致無法繼續提供資料時，如使用者受有損害或損失，本部及勞動檢查機構不負賠償責任。 </p>
+            </div>
+        </div>
+    </div>
+    <!-- 資料庫及免責說明燈箱 end-->
+    <!-- 查詢結果燈箱 start-->
+    <div class="lightbox" id="box3">
+        <div class="overlay"></div>
+        <div class="boxcontent">
+            <div class="boxclose"><a href="#"><img src="images/icon_close.png" alt="關閉"></a></div>
+            <h2>台中市職業安全衛生自主管理良好案件數量及比例</h2>
+            <h3 class="hidden"></h3>
+            <!-- 如果h3要隱藏，請加class="hidden"即可，如<h3 class="hidden"> -->
+            <div class="boxdata">
+                <!-- 1 -->
+                <table>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no01"></span></div>
+                        </td>
+                        <td width="55%">墜落、滾落</td>
+                        <td>32人(8件)32%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no02"></span></div>
+                        </td>
+                        <td>跌倒</td>
+                        <td>30人(2件)30%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no03"></span></div>
+                        </td>
+                        <td>衝撞</td>
+                        <td>22人(1件)22%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no04"></span></div>
+                        </td>
+                        <td>物體飛落</td>
+                        <td>8人(6件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no05"></span></div>
+                        </td>
+                        <td>物體倒塌、崩塌</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no06"></span></div>
+                        </td>
+                        <td>被撞</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no07"></span></div>
+                        </td>
+                        <td>被夾、被捲</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no08"></span></div>
+                        </td>
+                        <td>被刺、割、擦傷</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no09"></span></div>
+                        </td>
+                        <td>踩踏(踏穿)</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no10"></span></div>
+                        </td>
+                        <td>溺斃</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no11"></span></div>
+                        </td>
+                        <td>與高溫、低溫之接觸</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no12"></span></div>
+                        </td>
+                        <td>與有害物等之接觸</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no13"></span></div>
+                        </td>
+                        <td>感電</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no14"></span></div>
+                        </td>
+                        <td>爆炸</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no15"></span></div>
+                        </td>
+                        <td>物體破裂</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no16"></span></div>
+                        </td>
+                        <td>火災</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no17"></span></div>
+                        </td>
+                        <td>不當動作</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no18"></span></div>
+                        </td>
+                        <td>其他</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no19"></span></div>
+                        </td>
+                        <td>不能歸類</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no20"></span></div>
+                        </td>
+                        <td>不能歸類</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no21"></span></div>
+                        </td>
+                        <td>鐵路交通事故</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no22"></span></div>
+                        </td>
+                        <td>船舶飛機交通事故</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color_no23"></span></div>
+                        </td>
+                        <td>其他交通事故</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                </table>
+                <!-- 2 -->
+                <table>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no01"></span></div>
+                        </td>
+                        <td width="55%">農、林、漁、牧業</td>
+                        <td>32人(8件)32%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no02"></span></div>
+                        </td>
+                        <td>礦業及土石採取業</td>
+                        <td>30人(2件)30%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no03"></span></div>
+                        </td>
+                        <td>製造業</td>
+                        <td>22人(1件)22%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no04"></span></div>
+                        </td>
+                        <td>電力及燃氣供應業</td>
+                        <td>8人(6件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no05"></span></div>
+                        </td>
+                        <td>用水供應及污染整治業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no06"></span></div>
+                        </td>
+                        <td>營建工程業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no07"></span></div>
+                        </td>
+                        <td>批發及零售業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no08"></span></div>
+                        </td>
+                        <td>運輸及倉儲業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no09"></span></div>
+                        </td>
+                        <td>住宿及餐飲業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no10"></span></div>
+                        </td>
+                        <td>出版、影音製作、傳播及資通訊服務業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no11"></span></div>
+                        </td>
+                        <td>金融及保險業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no12"></span></div>
+                        </td>
+                        <td>不動產業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no13"></span></div>
+                        </td>
+                        <td>專業、科學及技術服務業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no14"></span></div>
+                        </td>
+                        <td>支援服務業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no15"></span></div>
+                        </td>
+                        <td>公共行政及國防</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no16"></span></div>
+                        </td>
+                        <td>強制性社會安全</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no17"></span></div>
+                        </td>
+                        <td>教育業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no18"></span></div>
+                        </td>
+                        <td>醫療保健及社會工作服務業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no19"></span></div>
+                        </td>
+                        <td>藝術、娛樂及休閒服務業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="iconcolorblock"><span class="color2_no20"></span></div>
+                        </td>
+                        <td>其他服務業</td>
+                        <td>8人(3件)8%</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- 查詢結果燈箱 end-->
+    <!-- 燈箱end -->
+    <!--  <a href="#" class="scrollup">TOP</a> -->
+    <!--  <a href="#" class="scrollup"><i class="icon-up-open"></i></a> -->
+    <script src="assets/js/jquery-1.11.2.js"></script>
+    <!-- Bootstrap JavaScript -->
+    <script src="assets/module/bootstrap-3.3.2/js/bootstrap.min.js"></script>
+    <script src="assets/js/jquery.lazyload.min.js"></script>
+    <script src="js/BS3JS.min.js"></script>
+    <!-- slick  -->
+    <script src="assets/module/slick/slick.js"></script>
+    <!-- slick 自訂 -->
+    <script src="js/slick-addscripts.js"></script>
+    <!-- Sidebar選單 -->
+    <script src="assets/js/bootstrap.offcanvas.js"></script>
+    <!-- fullcalendar -->
+    <script src="assets/module/fullcalendar-2.3.1/lib/moment.min.js"></script>
+    <script src="assets/module/fullcalendar-2.3.1/fullcalendar.min.js"></script>
+    <!-- scrollUp-->
+    <script src="assets/js/jquery.scrollUp.js"></script>
+    <!-- jq-easing -->
+    <script src="assets/js/jquery.easing.1.3.js"></script>
+    <!-- 全部自訂檔 -->
+    <script src="js/customize_scripts.js"></script>
+    <script src="js/common.js"></script>
+</body>
+
+</html>
